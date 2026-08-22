@@ -29,9 +29,10 @@
         #game-container {
             position: relative;
             margin-top: 1rem;
-            width: 100%;
-            max-width: 900px;
-            height: 400px;
+            width: 95%; /* Give some breathing room on edges */
+            max-width: 1024px; /* Larger overall game board */
+            aspect-ratio: 1024 / 500; /* Maintains perfect proportions at any screen size */
+            height: auto;
             background: linear-gradient(to bottom, #0f172a 0%, #1e1b4b 100%);
             border: 2px solid #06b6d4;
             border-radius: 12px;
@@ -43,37 +44,37 @@
             display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
         }
 
         #hud {
             display: flex;
             justify-content: space-between;
-            width: 100%;
-            max-width: 900px;
-            padding: 1rem;
-            font-size: 1.2rem;
+            width: 95%;
+            max-width: 1024px;
+            padding: 1rem 0.5rem;
+            font-size: 1.25rem;
             font-weight: bold;
         }
 
         .overlay {
-            position: absolute;
+            position: fixed; /* Takes the overlay out of the game box and covers the whole screen */
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: rgba(2, 6, 23, 0.85);
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 2rem;
-            z-index: 20;
+            padding: 2rem 1rem;
+            z-index: 50; /* Ensure it stays on top of everything */
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
+            overflow-y: auto; /* Allows scrolling on small screens if content is tall */
         }
 
         .overlay.active {
@@ -105,8 +106,10 @@
             border: 2px solid #ef4444;
             border-radius: 12px;
             padding: 1.5rem;
-            max-width: 600px;
-            width: 90%;
+            max-width: 800px; /* Made the panel wider for readability */
+            width: 95%;
+            max-height: 90vh; /* Ensure panel never exceeds screen height */
+            overflow-y: auto; /* Allows internal scrolling for long answers */
             box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
         }
 
@@ -121,14 +124,14 @@
         .option-btn {
             background: #334155;
             color: #f8fafc;
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             border-radius: 8px;
             border: 1px solid #475569;
             cursor: pointer;
             text-align: left;
             transition: all 0.2s;
             font-family: 'Inter', sans-serif;
-            font-size: 1rem;
+            font-size: 1.125rem;
         }
 
         .option-btn:hover:not(:disabled) { background: #475569; transform: translateX(5px); }
@@ -164,21 +167,21 @@
 </head>
 <body>
 
-    <header class="text-center mt-4">
-        <h1 id="mainTitle" class="text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-1 cursor-pointer select-none title-glow transition-all">
+    <header class="text-center mt-4 md:mt-8 w-[95%] max-w-4xl mx-auto flex flex-col items-center">
+        <h1 id="mainTitle" class="text-4xl md:text-5xl lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 cursor-pointer select-none transition-all">
             DATA DASH
         </h1>
-        <p class="text-slate-400 text-sm md:text-base px-4">Protect as much data as possible within 5 minutes! Navigate safely, collect secure data, and avoid threats.</p>
+        <p class="text-slate-400 text-sm md:text-lg px-2 max-w-3xl">Navigate the digital highway safely! Collect secure data, avoid threats, and prove your cyber skills.</p>
     </header>
 
-    <div id="hud">
-        <div class="text-cyan-400 font-bold cyber-font tracking-wider">DATA: <span id="scoreDisplay" class="text-white">0</span> MB</div>
-        <div class="text-amber-400 font-bold cyber-font tracking-wider">TIME: <span id="timeDisplay" class="text-white">05:00</span></div>
-        <div class="text-rose-400 font-bold cyber-font tracking-wider">SECURITY: <span id="livesDisplay" class="text-white">❤️❤️❤️</span></div>
+    <div id="hud" class="mt-2">
+        <div class="text-cyan-400 font-bold cyber-font tracking-wider text-base md:text-2xl drop-shadow-md">DATA: <span id="scoreDisplay" class="text-white">0</span> MB</div>
+        <div class="text-amber-400 font-bold cyber-font tracking-wider text-base md:text-2xl drop-shadow-md">TIME: <span id="timeDisplay" class="text-white">05:00</span></div>
+        <div class="text-rose-400 font-bold cyber-font tracking-wider text-base md:text-2xl drop-shadow-md">SECURITY: <span id="livesDisplay" class="text-white drop-shadow-md">❤️❤️❤️</span></div>
     </div>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="900" height="400"></canvas>
+        <canvas id="gameCanvas" width="1024" height="500"></canvas>
         
         <!-- Loading Screen -->
         <div id="loadingScreen" class="overlay active">
@@ -186,49 +189,60 @@
             <p class="text-slate-300">Authenticating Agent Profile</p>
         </div>
 
+        <!-- Title Screen (Cover Page) -->
+        <div id="titleScreen" class="overlay">
+            <h1 id="coverTitle" class="text-6xl md:text-8xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-6 cursor-pointer select-none transition-all cyber-font drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]">
+                DATA DASH
+            </h1>
+            <p class="text-slate-300 text-xl md:text-3xl px-4 max-w-4xl mb-12 leading-relaxed font-semibold drop-shadow-md">
+                Navigate the digital highway safely! Collect secure data, avoid threats, and prove your cyber skills.
+            </p>
+            <button class="btn !text-2xl md:!text-3xl !py-4 !px-12 animate-bounce hover:animate-none" onclick="window.showInstructions()">PLAY NOW</button>
+        </div>
+
         <!-- Start Screen -->
         <div id="startScreen" class="overlay">
-            <p class="mb-4 max-w-lg text-slate-300">
-                You have exactly <strong class="text-amber-400">5 MINUTES</strong> and <strong class="text-rose-500">ONE TRY</strong> to protect as much data as possible!<br><br>
-                Use <strong class="text-white">Spacebar or Tap</strong> to jump! Double tap to double jump!<br><br>
+            <p class="mb-6 max-w-2xl text-slate-300 text-lg md:text-xl">
+                You have exactly <strong class="text-amber-400">5 MINUTES</strong> and <strong class="text-emerald-400">ONE TRY</strong> to protect as much data as possible!<br><br>
+                Surf the digital highway. Use <strong class="text-white">Spacebar or Tap</strong> to jump! Double tap to double jump!<br><br>
                 <span class="text-emerald-400 font-bold">COLLECT:</span> 🛡️ Data Shields & ✅ Verification Badges<br>
                 <span class="text-rose-500 font-bold">AVOID:</span> 🐛 Malware Bugs, 🎣 Phishing Hooks, & ⚠️ Scam Links
             </p>
-            <input type="text" id="playerName" placeholder="Enter Real Name" class="mb-2 p-3 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-xs w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="20">
-            <input type="text" id="playerClass" placeholder="Enter Class (e.g. 5CA)" class="mb-2 p-3 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-xs w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="4">
-            <p class="text-xs text-emerald-400 mb-6 font-bold tracking-wider">YOUR NAME WILL BE ENCRYPTED AS AN "AGENT ID" ON THE LEADERBOARD</p>
-            <button class="btn" onclick="window.startGame()">INITIALIZE RUN</button>
-            <p id="nameError" class="text-rose-500 mt-3 hidden font-bold tracking-wide">⚠️ PLEASE ENTER YOUR NAME AND CLASS ⚠️</p>
+            <input type="text" id="playerName" placeholder="Enter Real Name" class="mb-3 p-4 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl md:text-2xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-md w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="20">
+            <input type="text" id="playerClass" placeholder="Enter Class (e.g. 5CA)" class="mb-4 p-4 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl md:text-2xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-md w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="4">
+            <p class="text-sm text-emerald-400 mb-8 font-bold tracking-wider">YOUR NAME WILL BE ENCRYPTED AS AN "AGENT ID" ON THE LEADERBOARD</p>
+            <button class="btn !text-xl md:!text-2xl !py-3 !px-8" onclick="window.startGame()">INITIALIZE RUN</button>
+            <p id="nameError" class="text-rose-500 mt-4 hidden font-bold tracking-wide text-lg">⚠️ PLEASE ENTER YOUR NAME AND CLASS ⚠️</p>
         </div>
 
         <!-- Quiz Screen -->
         <div id="quizScreen" class="overlay">
             <div class="quiz-panel">
-                <div class="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold cyber-font text-xl animate-pulse">
+                <div class="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold cyber-font text-2xl animate-pulse">
                     <span>⚠️</span> SECURITY ALERT DETECTED <span>⚠️</span>
                 </div>
-                <h3 id="quizQuestion" class="mb-6 text-lg text-white">Question goes here?</h3>
+                <h3 id="quizQuestion" class="mb-4 text-2xl md:text-3xl text-white leading-relaxed font-semibold">Question goes here?</h3>
                 <div id="quizOptions" class="options-grid">
                     <!-- Populated by JS -->
                 </div>
-                <button id="resumeBtn" class="btn hidden mt-6 mx-auto bg-emerald-500" onclick="window.resumeGame()">DEPLOY FIREWALL</button>
+                <button id="resumeBtn" class="btn hidden mt-6 mx-auto bg-emerald-500 !text-xl md:!text-2xl" onclick="window.resumeGame()">DEPLOY FIREWALL</button>
             </div>
         </div>
 
         <!-- Game Over Screen -->
         <div id="endScreen" class="overlay">
-            <h2 id="endTitle" class="text-5xl cyber-font mb-4 text-rose-500">SYSTEM COMPROMISED</h2>
-            <p id="endMessage" class="mb-6 text-xl text-slate-300"></p>
+            <h2 id="endTitle" class="text-6xl cyber-font mb-4 text-rose-500 drop-shadow-lg">SYSTEM COMPROMISED</h2>
+            <p id="endMessage" class="mb-6 text-2xl text-slate-300"></p>
         </div>
 
         <!-- Leaderboard Screen -->
         <div id="leaderboardScreen" class="overlay">
-            <div class="quiz-panel w-full max-w-md bg-slate-900/90 backdrop-blur-md">
-                <h2 class="text-3xl cyber-font text-cyan-400 mb-4 text-center tracking-wider">LEADERBOARD</h2>
-                <div id="leaderboardList" class="flex flex-col gap-2 mb-6 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+            <div class="quiz-panel w-full !max-w-4xl bg-slate-900/95 backdrop-blur-xl p-6 md:p-8">
+                <h2 class="text-4xl md:text-5xl cyber-font text-cyan-400 mb-8 text-center tracking-wider drop-shadow-md">LEADERBOARD</h2>
+                <div id="leaderboardList" class="flex flex-col gap-4 mb-6 max-h-[55vh] overflow-y-auto pr-4 custom-scrollbar text-xl">
                     <!-- Populated by JS -->
                 </div>
-                <p class="text-center text-slate-400 text-sm mt-4 italic">Only ONE try per agent. Thank you for keeping the network safe.</p>
+                <p class="text-center text-slate-400 text-base md:text-lg mt-6 italic">Top Secret Rule: Agents only get one try!</p>
             </div>
         </div>
 
@@ -344,6 +358,7 @@
         // UI Elements
         const screens = {
             loading: document.getElementById('loadingScreen'),
+            title: document.getElementById('titleScreen'),
             start: document.getElementById('startScreen'),
             quiz: document.getElementById('quizScreen'),
             end: document.getElementById('endScreen'),
@@ -376,11 +391,11 @@
         const player = {
             x: 100,
             y: 0,
-            width: 40,
-            height: 60,
+            width: 60,
+            height: 90,
             dy: 0,
             gravity: 0.6,
-            jumpStrength: -10,
+            jumpStrength: -12,
             jumps: 0,
             maxJumps: 2,
             isGrounded: false,
@@ -411,8 +426,8 @@
                     ctx.shadowColor = '#06b6d4';
                     ctx.fillStyle = '#67e8f9';
                     ctx.beginPath();
-                    ctx.arc(this.x + this.width * 0.17, this.y + this.height + 2, 4, 0, Math.PI*2);
-                    ctx.arc(this.x + this.width * 0.83, this.y + this.height + 2, 4, 0, Math.PI*2);
+                    ctx.arc(this.x + this.width * 0.17, this.y + this.height + 2, 6, 0, Math.PI*2);
+                    ctx.arc(this.x + this.width * 0.83, this.y + this.height + 2, 6, 0, Math.PI*2);
                     ctx.fill();
                     ctx.shadowBlur = 0;
                 }
@@ -446,9 +461,9 @@
         let particles = [];
 
         const OBSTACLE_TYPES = [
-            { id: 'malware', emoji: '🐛', label: 'Malware', yOffset: 0, width: 40, height: 40 },
-            { id: 'phishing', emoji: '🎣', label: 'Phishing', yOffset: -80, width: 40, height: 40 },
-            { id: 'scam', emoji: '⚠️', label: 'Scam Link', yOffset: 0, width: 40, height: 40 }
+            { id: 'malware', emoji: '🐛', label: 'Malware', yOffset: 0, width: 60, height: 60 },
+            { id: 'phishing', emoji: '🎣', label: 'Phishing', yOffset: -150, width: 60, height: 60 },
+            { id: 'scam', emoji: '⚠️', label: 'Scam Link', yOffset: 0, width: 60, height: 60 }
         ];
 
         const COLLECTIBLE_TYPES = [
@@ -471,7 +486,8 @@
                 if (this.x + this.width < 0) this.markedForDeletion = true;
             }
             draw() {
-                ctx.font = '36px Inter';
+                const fontSize = Math.floor(this.width * 0.85);
+                ctx.font = `${fontSize}px Inter`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(this.data.emoji, this.x + this.width/2, this.y + this.height/2 + 4);
@@ -541,8 +557,8 @@
                     obstacles.push(new Entity(canvas.width, y, type.width, type.height, type, false));
                 } else {
                     const type = COLLECTIBLE_TYPES[Math.floor(Math.random() * COLLECTIBLE_TYPES.length)];
-                    const y = groundY - 40 - Math.random() * 100;
-                    obstacles.push(new Entity(canvas.width, y, 40, 40, type, true));
+                    const y = groundY - 60 - Math.random() * 140;
+                    obstacles.push(new Entity(canvas.width, y, 50, 50, type, true));
                 }
             }
         }
@@ -711,6 +727,11 @@
             livesDisplay.innerText = '❤️'.repeat(Math.max(0, lives));
         }
 
+        window.showInstructions = function() {
+            screens.title.classList.remove('active');
+            screens.start.classList.add('active');
+        }
+
         function updateTimerDisplay() {
             const minutes = Math.floor(timeRemaining / 60);
             const seconds = timeRemaining % 60;
@@ -873,15 +894,15 @@
             if (isRevisit) {
                 const pastScore = localStorage.getItem('dataDashScore') || 0;
                 bannerHTML = `
-                    <div class="text-center p-4 mb-4 bg-rose-900/40 border border-rose-500 rounded-lg shrink-0">
-                        <p class="text-rose-400 font-bold mb-1 text-sm md:text-base tracking-widest">ACCESS DENIED</p>
-                        <p class="text-slate-300 text-sm">Top Secret Rule: Agents only get one try! Your secure transmission: <span class="text-cyan-400 font-bold text-lg">${pastScore} MB</span></p>
+                    <div class="text-center p-5 mb-6 bg-rose-900/40 border-2 border-rose-500 rounded-lg shrink-0">
+                        <p class="text-rose-400 font-bold mb-2 text-lg md:text-xl tracking-widest">ACCESS DENIED</p>
+                        <p class="text-slate-300 text-base md:text-lg">Top Secret Rule: Agents only get one try! Your secure transmission: <span class="text-cyan-400 font-bold text-xl md:text-2xl">${pastScore} MB</span></p>
                     </div>`;
                 currentAgentId = localStorage.getItem('dataDashCurrentAgent');
             }
 
             // Show loading state while fetching from GAS
-            list.innerHTML = bannerHTML + '<div id="fetchingState" class="text-center text-cyan-400 p-4 animate-pulse font-bold tracking-widest">FETCHING SECURE DATA...</div>';
+            list.innerHTML = bannerHTML + '<div id="fetchingState" class="text-center text-cyan-400 p-8 text-xl md:text-2xl animate-pulse font-bold tracking-widest">FETCHING SECURE DATA...</div>';
 
             const gasUrl = "https://script.google.com/macros/s/AKfycbwgzias437iRiUzPuQjOuqnH8uwopm4lqg4MkGSfVuYuYJe6KkWbnG2_FN1knr_HWUC/exec";
 
@@ -898,7 +919,7 @@
                     if (fetchState) fetchState.remove();
 
                     if(!data || data.length === 0) {
-                        list.innerHTML += '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
+                        list.innerHTML += '<div class="text-center text-slate-400 p-8 text-xl">No entries yet. Be the first!</div>';
                         return;
                     }
 
@@ -908,10 +929,10 @@
                         // Use s.name as that is what your GAS doGet script returns
                         const isCurrentPlayer = (s.name === currentAgentId && s.score == score) || (isRevisit && s.name === currentAgentId);
                         
-                        row.className = `flex justify-between items-center p-3 rounded mb-2 ${isCurrentPlayer ? 'bg-cyan-900/70 border border-cyan-400 user-score-highlight' : 'bg-slate-800 border border-slate-700'}`;
+                        row.className = `flex justify-between items-center p-4 md:p-5 rounded-lg mb-3 shadow-md ${isCurrentPlayer ? 'bg-cyan-900/70 border-2 border-cyan-400 user-score-highlight' : 'bg-slate-800 border border-slate-700'}`;
                         row.innerHTML = `
-                            <span class="font-bold cyber-font text-slate-200">#${idx + 1} ${s.name}</span>
-                            <span class="text-cyan-400 font-bold tracking-wider">${s.score} MB</span>
+                            <span class="font-bold cyber-font text-slate-200 text-xl md:text-2xl">#${idx + 1} ${s.name}</span>
+                            <span class="text-cyan-400 font-bold tracking-wider text-xl md:text-2xl">${s.score} MB</span>
                         `;
                         list.appendChild(row);
                     });
@@ -922,10 +943,10 @@
                     if (fetchState) fetchState.remove();
                     // Keep the fallback message so you know if it failed
                     list.innerHTML += `
-                        <div class="text-center text-rose-500 p-4 flex flex-col items-center gap-2">
-                            <span class="text-2xl">⚠️</span>
-                            <span>Connection to secure server failed.</span>
-                            <span class="text-xs text-slate-400">${err.message}</span>
+                        <div class="text-center text-rose-500 p-8 flex flex-col items-center gap-3">
+                            <span class="text-4xl">⚠️</span>
+                            <span class="text-xl md:text-2xl">Connection to secure server failed.</span>
+                            <span class="text-sm md:text-base text-slate-400">${err.message}</span>
                         </div>`;
                 });
         }
@@ -933,22 +954,26 @@
         let secretClicks = 0;
         let clickTimer = null;
 
-        document.getElementById('mainTitle').addEventListener('click', () => {
+        function handleSecretClick(el) {
             secretClicks++;
-            document.getElementById('mainTitle').style.textShadow = `0 0 ${secretClicks * 5}px rgba(16, 185, 129, 0.8)`;
+            el.style.textShadow = `0 0 ${secretClicks * 5}px rgba(16, 185, 129, 0.8)`;
             
             clearTimeout(clickTimer);
             clickTimer = setTimeout(() => {
                 secretClicks = 0; 
-                document.getElementById('mainTitle').style.textShadow = 'none';
+                el.style.textShadow = 'none';
             }, 1000);
 
             if (secretClicks >= 5) {
                 secretClicks = 0;
-                document.getElementById('mainTitle').style.textShadow = 'none';
+                el.style.textShadow = 'none';
                 showTeacherDashboard();
             }
-        });
+        }
+
+        document.getElementById('mainTitle').addEventListener('click', function() { handleSecretClick(this); });
+        const coverTitleEl = document.getElementById('coverTitle');
+        if (coverTitleEl) coverTitleEl.addEventListener('click', function() { handleSecretClick(this); });
 
         function showTeacherDashboard() {
             document.getElementById('teacherDashboard').classList.add('active');
@@ -983,7 +1008,7 @@
                 if (localStorage.getItem('dataDashPlayed') === 'true') {
                     showLeaderboard(true); 
                 } else {
-                    screens.start.classList.add('active');
+                    screens.title.classList.add('active');
                     currentState = STATE.START;
                 }
                 drawBackground();
