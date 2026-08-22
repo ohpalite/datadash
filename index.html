@@ -448,8 +448,8 @@
             }
         };
 
-        const obstacles = [];
-        const particles = [];
+        let obstacles = [];
+        let particles = [];
 
         const OBSTACLE_TYPES = [
             { id: 'malware', emoji: '🐛', label: 'Malware', yOffset: 0, width: 40, height: 40 },
@@ -825,7 +825,11 @@
         }
 
         window.startGame = function() {
-            initAudio(); // Initialize audio system when user interacts
+            try {
+                initAudio(); // Initialize audio system when user interacts
+            } catch (e) {
+                console.warn("Audio initialization bypassed:", e);
+            }
             
             const nameInput = document.getElementById('playerName').value.trim();
             let classInput = document.getElementById('playerClass').value.trim();
