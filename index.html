@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Data Dash: Cyber Surfer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+
+        body {000
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* Slate 950 */
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Prevent pull-to-refresh on mobile */
+        }
+
+        h1, .cyber-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            margin-top: 1rem;
+            width: 100%;
+            max-width: 900px;
+            height: 400px; /* Fixed logical height, width scales */
+            background: linear-gradient(to bottom, #0f172a 0%, #1e1b4b 100%);
+            border: 2px solid #06b6d4; /* Cyan 500 */
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.4), inset 0 0 20px rgba(6, 182, 212, 0.2);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 900px;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            font-size: 1.25rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.5);
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(6, 182, 212, 0.7); }
+        .btn:active { transform: scale(0.95); }
+
+        .quiz-panel {
+            background: #1e293b;
+            border: 2px solid #ef4444;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .quiz-panel h2 { color: #fca5a5; margin-bottom: 1rem; }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .option-btn {
+            background: #334155;
+            color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+        }
+
+        .option-btn:hover:not(:disabled) { background: #475569; transform: translateX(5px); }
+        .option-btn.correct { background: #10b981; border-color: #047857; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .option-btn.wrong { background: #ef4444; border-color: #b91c1c; }
+
+        #mobile-controls {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            padding: 1rem;
+            text-align: center;
+            color: #94a3b8;
+        }
+        @media (max-width: 768px) {
+            #mobile-controls { display: block; }
+        }
+        
+        /* Leaderboard scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #06b6d4; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <header class="text-center mt-4">
+        <h1 id="mainTitle" class="text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-1 cursor-pointer select-none title-glow transition-all" title="Click 5 times for Teacher Dashboard">
+            DATA DASH
+        </h1>
+        <p class="text-slate-400 text-sm md:text-base">Objective: Navigate the digital highway safely! Collect secure data, avoid threats, and prove your cyber skills.</p>
+    </header>
+
+    <div id="hud">
+        <div class="text-cyan-400 font-bold cyber-font tracking-wider">DATA: <span id="scoreDisplay" class="text-white">0</span> MB</div>
+        <div class="text-rose-400 font-bold cyber-font tracking-wider">SECURITY: <span id="livesDisplay" class="text-white">❤️❤️❤️</span></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="900" height="400"></canvas>
+        
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="overlay active">
+            <h2 class="text-4xl cyber-font text-cyan-400 mb-2 animate-pulse">CONNECTING TO SECURE SERVER...</h2>
+            <p class="text-slate-300">Authenticating Agent Profile</p>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <h2 class="text-4xl cyber-font text-cyan-400 mb-2">SYSTEM READY</h2>
+            <p class="mb-4 max-w-lg text-slate-300">Surf the digital highway. Use <strong class="text-white">Spacebar or Tap</strong> to jump! Double tap to double jump!<br><br>
+            <span class="text-emerald-400 font-bold">COLLECT:</span> 🛡️ Data Shields & ✅ Verification Badges<br>
+            <span class="text-rose-500 font-bold">AVOID:</span> 🐛 Malware Bugs, 🎣 Phishing Hooks, & ⚠️ Scam Links</p>
+            <input type="text" id="playerName" placeholder="Enter Real Name" class="mb-2 p-3 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-xs w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="20">
+            <input type="text" id="playerClass" placeholder="Enter Class (e.g. 5CA)" class="mb-2 p-3 rounded-lg bg-slate-900 text-white border-2 border-cyan-500 text-center text-xl font-bold uppercase focus:outline-none focus:ring-4 focus:ring-cyan-500/50 max-w-xs w-full shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all" maxlength="4">
+            <p class="text-xs text-emerald-400 mb-6 font-bold tracking-wider">YOUR NAME WILL BE ENCRYPTED AS AN "AGENT ID" ON THE LEADERBOARD</p>
+            <button class="btn" onclick="window.startGame()">INITIALIZE RUN</button>
+            <p id="nameError" class="text-rose-500 mt-3 hidden font-bold tracking-wide">⚠️ PLEASE ENTER YOUR NAME AND CLASS ⚠️</p>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quizScreen" class="overlay">
+            <div class="quiz-panel">
+                <div class="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold cyber-font text-xl animate-pulse">
+                    <span>⚠️</span> SECURITY ALERT DETECTED <span>⚠️</span>
+                </div>
+                <h3 id="quizQuestion" class="mb-6 text-lg">Question goes here?</h3>
+                <div id="quizOptions" class="options-grid">
+                    <!-- Populated by JS -->
+                </div>
+                <button id="resumeBtn" class="btn hidden mt-6 mx-auto bg-emerald-500" onclick="window.resumeGame()">DEPLOY FIREWALL</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="endScreen" class="overlay">
+            <h2 id="endTitle" class="text-5xl cyber-font mb-4 text-rose-500">SYSTEM COMPROMISED</h2>
+            <p id="endMessage" class="mb-6 text-xl text-slate-300"></p>
+            <!-- Reboot button removed to enforce one-time play -->
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen" class="overlay">
+            <div class="quiz-panel w-full max-w-md bg-slate-900/90 backdrop-blur-md">
+                <h2 class="text-3xl cyber-font text-cyan-400 mb-4 text-center tracking-wider">GLOBAL LEADERBOARD</h2>
+                <div id="leaderboardList" class="flex flex-col gap-2 mb-6 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                    <!-- Populated by JS -->
+                </div>
+                <p class="text-center text-slate-400 text-sm mt-4 italic">Agents are permitted one secure run only to maintain network integrity.</p>
+            </div>
+        </div>
+
+        <!-- Teacher Dashboard Screen -->
+        <div id="teacherDashboard" class="overlay z-50">
+            <div class="quiz-panel !max-w-4xl w-full bg-slate-900/95 backdrop-blur-md border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl cyber-font text-emerald-400 tracking-wider">TEACHER DASHBOARD</h2>
+                    <button class="text-rose-500 hover:text-rose-400 font-bold text-2xl transition-transform hover:scale-110" onclick="document.getElementById('teacherDashboard').classList.remove('active')">✖</button>
+                </div>
+                <div class="overflow-x-auto max-h-80 overflow-y-auto custom-scrollbar border border-slate-700 rounded-lg">
+                    <table class="w-full text-left border-collapse text-slate-300 min-w-max">
+                        <thead class="bg-slate-800 sticky top-0">
+                            <tr class="border-b border-slate-600 text-cyan-400 cyber-font text-sm">
+                                <th class="p-3">Real Name</th>
+                                <th class="p-3">Class</th>
+                                <th class="p-3">Agent ID</th>
+                                <th class="p-3">Score (MB)</th>
+                                <th class="p-3">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacherRecordsList" class="text-sm md:text-base">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-center text-emerald-500/70 text-xs mt-4 font-bold tracking-wider">SECURE ADMIN ACCESS ONLY</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        Tap the game area to Jump / Double Jump
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = Object.keys(firebaseConfig).length > 0 ? initializeApp(firebaseConfig) : null;
+        const auth = app ? getAuth(app) : null;
+        const db = app ? getFirestore(app) : null;
+
+        let currentUser = null;
+        let playerName = "";
+        let playerClass = "";
+
+        // --- Web Audio API Setup ---
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                // Initialize context on first user interaction to comply with browser autoplay policies
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Synthesizer function to generate retro sounds
+        function playTone(freq, type, duration, slideToFreq = null, vol = 0.1) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                if (slideToFreq) {
+                    osc.frequency.exponentialRampToValueAtTime(slideToFreq, audioCtx.currentTime + duration);
+                }
+                
+                // Fast attack, exponential decay for a percussive 8-bit sound
+                gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) { console.error("Audio error", e); }
+        }
+
+        // Sound Effect Library
+        function sfxJump() { playTone(250, 'square', 0.15, 600, 0.05); }
+        function sfxCollect() { 
+            playTone(880, 'sine', 0.1, null, 0.1); 
+            setTimeout(() => playTone(1760, 'sine', 0.1, null, 0.1), 100);
+        }
+        function sfxHit() { playTone(150, 'sawtooth', 0.3, 50, 0.2); }
+        function sfxCorrect() {
+            playTone(440, 'square', 0.1, null, 0.05);
+            setTimeout(() => playTone(554, 'square', 0.1, null, 0.05), 100);
+            setTimeout(() => playTone(659, 'square', 0.2, null, 0.05), 200);
+        }
+        function sfxWrong() {
+            playTone(300, 'sawtooth', 0.2, 200, 0.1);
+            setTimeout(() => playTone(200, 'sawtooth', 0.3, 100, 0.1), 200);
+        }
+        function sfxGameOver() {
+            playTone(200, 'square', 0.5, 50, 0.1);
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Character Image Setup
+        const playerImgRun1 = new Image();
+        playerImgRun1.src = 'https://i.ibb.co/chJ46jdj/boy-1.png';
+
+        const playerImgRun2 = new Image();
+        playerImgRun2.src = 'https://i.ibb.co/WvF3CmNb/boy-2.png';
+        
+        const playerImgJump = new Image();
+        playerImgJump.src = 'https://i.ibb.co/4n9zqcx6/boy-3.png';
+
+        // UI Elements
+        const screens = {
+            loading: document.getElementById('loadingScreen'),
+            start: document.getElementById('startScreen'),
+            quiz: document.getElementById('quizScreen'),
+            end: document.getElementById('endScreen'),
+            leaderboard: document.getElementById('leaderboardScreen')
+        };
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const livesDisplay = document.getElementById('livesDisplay');
+
+        // Real-Time Class Input Formatter
+        document.getElementById('playerClass').addEventListener('input', function(e) {
+            // Remove anything that isn't a letter or number
+            let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            // Match up to 2 numbers at the start, followed by up to 2 letters
+            const match = val.match(/^(\d{0,2})([A-Z]{0,2})/);
+            if (match) {
+                this.value = match[0]; // Forces format directly in the text box
+            }
+        });
+
+        // Game State
+        const STATE = { LOADING: -1, START: 0, PLAYING: 1, QUIZ: 2, GAMEOVER: 3 };
+        let currentState = STATE.LOADING;
+        
+        let score = 0;
+        let lives = 3;
+        let gameSpeed = 5;
+        let frameCount = 0;
+        let currentObstacleHit = null; // Store which obstacle triggered the quiz
+
+        const player = {
+            x: 100,
+            y: 0, // Set dynamically based on ground
+            width: 40,
+            height: 60,
+            dy: 0,
+            gravity: 0.6,
+            jumpStrength: -10,
+            jumps: 0,
+            maxJumps: 2,
+            isGrounded: false,
+            color: '#06b6d4',
+            draw: function() {
+                // Determine which image to use based on grounded state and frame count
+                let currentImg;
+                if (!this.isGrounded) {
+                    currentImg = playerImgJump;
+                } else {
+                    // Alternate images every 8 frames to create a running animation
+                    if (Math.floor(frameCount / 8) % 2 === 0) {
+                        currentImg = playerImgRun1;
+                    } else {
+                        currentImg = playerImgRun2;
+                    }
+                }
+
+                // Draw the custom character image
+                if (currentImg.complete && currentImg.naturalHeight !== 0) {
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(currentImg, this.x, this.y, this.width, this.height);
+                    ctx.imageSmoothingEnabled = true; 
+                } else {
+                    // Fallback block if image is still loading or URL is invalid
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+                
+                // Thruster glow when jumping
+                if (!this.isGrounded) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#06b6d4';
+                    ctx.fillStyle = '#67e8f9';
+                    ctx.beginPath();
+                    // Draw dual thruster flames matching the SVG exhaust ports
+                    ctx.arc(this.x + this.width * 0.17, this.y + this.height + 2, 4, 0, Math.PI*2);
+                    ctx.arc(this.x + this.width * 0.83, this.y + this.height + 2, 4, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            },
+            update: function() {
+                this.dy += this.gravity;
+                this.y += this.dy;
+
+                const groundLevel = canvas.height - 50 - this.height;
+                if (this.y >= groundLevel) {
+                    this.y = groundLevel;
+                    this.dy = 0;
+                    this.isGrounded = true;
+                    this.jumps = 0;
+                } else {
+                    this.isGrounded = false;
+                }
+            },
+            jump: function() {
+                if (this.jumps < this.maxJumps) {
+                    this.dy = this.jumpStrength;
+                    this.jumps++;
+                    this.isGrounded = false;
+                    createParticles(this.x + this.width/2, this.y + this.height, '#06b6d4', 5);
+                    sfxJump(); // Play jump sound
+                }
+            }
+        };
+
+        const obstacles = [];
+        const particles = [];
+
+        const OBSTACLE_TYPES = [
+            { id: 'malware', emoji: '🐛', label: 'Malware', yOffset: 0, width: 40, height: 40 },
+            { id: 'phishing', emoji: '🎣', label: 'Phishing', yOffset: -80, width: 40, height: 40 },
+            { id: 'scam', emoji: '⚠️', label: 'Scam Link', yOffset: 0, width: 40, height: 40 }
+        ];
+
+        const COLLECTIBLE_TYPES = [
+            { id: 'shield', emoji: '🛡️', points: 50 },
+            { id: 'verify', emoji: '✅', points: 100 }
+        ];
+
+        class Entity {
+            constructor(x, y, width, height, data, isCollectible) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.data = data;
+                this.isCollectible = isCollectible;
+                this.markedForDeletion = false;
+            }
+            update() {
+                this.x -= gameSpeed;
+                if (this.x + this.width < 0) this.markedForDeletion = true;
+            }
+            draw() {
+                ctx.font = '36px Inter';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Draw text/emoji slightly larger and centered on hit box
+                ctx.fillText(this.data.emoji, this.x + this.width/2, this.y + this.height/2 + 4);
+                
+                // Debug Hitbox
+                // ctx.strokeStyle = this.isCollectible ? 'green' : 'red';
+                // ctx.strokeRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 4 + 2;
+                this.speedX = Math.random() * 6 - 3;
+                this.speedY = Math.random() * -6;
+                this.color = color;
+                this.life = 1.0;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 0.05;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        const quizQuestions = [
+            {
+                q: "You just bumped into a Malware Bug! What is the BEST way to keep malware off your device?",
+                options: ["Only download apps/games from official stores.", "Click on pop-ups that say you won a prize.", "Turn off your antivirus so games run faster."],
+                ans: 0
+            },
+            {
+                q: "A Phishing Hook tried to catch you! How can you spot a phishing message?",
+                options: ["It has your correct name.", "It creates a sense of urgency, asking for passwords.", "It is from a teacher about homework."],
+                ans: 1
+            },
+            {
+                q: "A Scam Link blocked your path! It promises 'Free Robux if you click here'. What do you do?",
+                options: ["Click it quickly before it disappears.", "Share it with a friend to see if it works.", "Ignore it and never click links promising free stuff."],
+                ans: 2
+            },
+            {
+                q: "Security Alert! Someone in a game chat asks for your real name and where you go to school. What should you do?",
+                options: ["Tell them, it's just a game.", "Give them a fake name and school.", "Don't tell them, block them, and tell an adult."],
+                ans: 2
+            },
+            {
+                q: "You hit a bad file! Why is it important to use Strong Passwords?",
+                options: ["They are easier for you to remember.", "They make it much harder for hackers to guess and steal your account.", "They make your computer run faster."],
+                ans: 1
+            },
+            {
+                q: "Warning! You are about to connect to Free Public Wi-Fi at a cafe. What is the risk?",
+                options: ["Hackers might be able to peek at the data you send over the network.", "It uses up your phone's battery too fast.", "The cafe might charge you money later."],
+                ans: 0
+            },
+            {
+                q: "You have been playing your favorite video game for two hours straight. What is a healthy habit to practice?",
+                options: ["Keep playing until you finish the next level, no matter how long it takes.", "Take a 10-15 minute break to stretch, drink water, and rest your eyes.", "Switch to watching videos on your phone instead to give your brain a break from gaming."],
+                ans: 1
+            },
+            {
+                q: "Someone is sending mean messages to you in the game chat. What is the first thing you should do?",
+                options: ["Use the block or mute button, and report them to the game platform.", "Reply with mean messages to show them you are tough.", "Quit playing games forever."],
+                ans: 0
+            },
+            {
+                q: "An online friend asks you to share a secret about your personal life. What should you do?",
+                options: ["Share the secret, but make them promise not to tell anyone else.", "Keep your personal life private and do not share secrets with strangers.", "Tell them the secret only if they share a secret with you first."],
+                ans: 1
+            },
+            {
+                q: "How can you make sure gaming does not stop you from doing your homework and chores?",
+                options: ["Set a schedule to finish your responsibilities before gaming.", "Play games while you are doing your homework to save time.", "Only do your homework when your parents force you to, even if it delays gaming."],
+                ans: 0
+            },
+            {
+                q: "What is considered Personally Identifiable Information (PII) that you should NEVER share online?",
+                options: ["Your favorite color and favorite food.", "Your home address and phone number.", "Your gaming username."],
+                ans: 1
+            },
+            {
+                q: "Which of the following is an example of a strong, secure password?",
+                options: ["Password123", "Yourname123", "B@sketb@ll!99"],
+                ans: 2
+            },
+            {
+                q: "Someone you just met in an online game asks for a picture of you. What should you do?",
+                options: ["Send a picture, but only if it does not show your face.", "Send a picture if they promise not to share it with anyone else.", "Politely say no and tell them you are not allowed to share photos online."],
+                ans: 2
+            },
+            {
+                q: "You are setting up a new online learning account. The site asks for your school's name and your home address. What should you enter?",
+                options: ["Do not enter either; instead, ask a parent for help before sharing personal details.", "Enter both so new friends from school can find you easily.", "Enter only your school name but not your home address."],
+                ans: 0
+            }
+        ];
+        let availableQuestions = [...quizQuestions]; // Clone array for shuffling/tracking
+
+        function handleInput(e) {
+            // Ignore the spacebar if the user is currently typing in an input box
+            if (e.target.tagName === 'INPUT') return;
+
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'keydown') e.preventDefault(); // Prevent scrolling
+
+            if (currentState === STATE.PLAYING) {
+                player.jump();
+            }
+            // Removed starting with spacebar to enforce typing a name and clicking the button
+        }
+
+        window.addEventListener('keydown', handleInput);
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); }, {passive: false});
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function spawnEntities() {
+            if (frameCount % Math.max(60, 120 - Math.floor(gameSpeed * 5)) === 0) {
+                // Determine what to spawn
+                const groundY = canvas.height - 50;
+                
+                if (Math.random() < 0.7) {
+                    // Spawn Obstacle
+                    const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+                    const y = groundY - type.height + type.yOffset;
+                    obstacles.push(new Entity(canvas.width, y, type.width, type.height, type, false));
+                } else {
+                    // Spawn Collectible
+                    const type = COLLECTIBLE_TYPES[Math.floor(Math.random() * COLLECTIBLE_TYPES.length)];
+                    // Random height for collectible
+                    const y = groundY - 40 - Math.random() * 100;
+                    obstacles.push(new Entity(canvas.width, y, 40, 40, type, true));
+                }
+            }
+        }
+
+        function checkCollisions() {
+            // Very simple AABB Collision, slightly forgiving hitbox
+            const pHitbox = {
+                x: player.x + 5, y: player.y + 5, w: player.width - 10, h: player.height - 10
+            };
+
+            for (let i = 0; i < obstacles.length; i++) {
+                let obs = obstacles[i];
+                let oHitbox = { x: obs.x + 5, y: obs.y + 5, w: obs.width - 10, h: obs.height - 10 };
+
+                if (pHitbox.x < oHitbox.x + oHitbox.w &&
+                    pHitbox.x + pHitbox.w > oHitbox.x &&
+                    pHitbox.y < oHitbox.y + oHitbox.h &&
+                    pHitbox.y + pHitbox.h > oHitbox.y) {
+                    
+                    if (obs.isCollectible) {
+                        // Collectible Hit
+                        score += obs.data.points;
+                        createParticles(obs.x + obs.width/2, obs.y + obs.height/2, '#10b981', 10);
+                        obs.markedForDeletion = true;
+                        updateHUD();
+                        sfxCollect(); // Play collect sound
+                    } else {
+                        // Obstacle Hit -> Trigger Quiz
+                        currentObstacleHit = obs;
+                        sfxHit(); // Play crash sound
+                        triggerQuiz(obs.data);
+                        return; // Stop checking further collisions this frame
+                    }
+                }
+            }
+        }
+
+        function drawBackground() {
+            // Deep cyberspace background
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Moving Grid floor
+            const groundY = canvas.height - 50;
+            
+            // Grid lines
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)'; // Cyan
+            ctx.lineWidth = 2;
+            
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            // Vertical moving lines
+            const lineSpacing = 50;
+            const offset = (frameCount * gameSpeed) % lineSpacing;
+            
+            for (let i = -lineSpacing; i < canvas.width + lineSpacing; i += lineSpacing) {
+                ctx.beginPath();
+                // Perspective math for cool 3D effect on floor
+                let startX = i - offset;
+                let endX = startX + ((startX - canvas.width/2) * 1.5); // Spread outward
+                
+                ctx.moveTo(startX, groundY);
+                ctx.lineTo(endX, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Fill bottom to hide lines below a certain point if needed, or leave it for speed effect
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.6)';
+            ctx.fillRect(0, groundY, canvas.width, 50);
+        }
+
+        function update() {
+            if (currentState !== STATE.PLAYING) return;
+
+            player.update();
+            spawnEntities();
+
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update();
+                if (obstacles[i].markedForDeletion) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            checkCollisions();
+
+            // Increase score over time and increase speed slowly
+            if (frameCount % 10 === 0) {
+                score++;
+                updateHUD();
+            }
+            if (frameCount % 600 === 0) { // Every ~10 seconds
+                gameSpeed += 0.5;
+            }
+
+            frameCount++;
+        }
+
+        function draw() {
+            drawBackground();
+
+            if (currentState === STATE.PLAYING || currentState === STATE.QUIZ) {
+                obstacles.forEach(obs => obs.draw());
+                player.draw();
+                particles.forEach(p => p.draw());
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerQuiz(threatData) {
+            currentState = STATE.QUIZ;
+            screens.quiz.classList.add('active');
+            document.getElementById('resumeBtn').classList.add('hidden');
+            
+            // Get random question
+            if (availableQuestions.length === 0) {
+                availableQuestions = [...quizQuestions]; // Reset if all used
+            }
+            const qIndex = Math.floor(Math.random() * availableQuestions.length);
+            const q = availableQuestions[qIndex];
+            
+            // Remove question from available pool to avoid immediate repeats
+            availableQuestions.splice(qIndex, 1);
+
+            document.getElementById('quizQuestion').innerText = q.q;
+            
+            const optionsDiv = document.getElementById('quizOptions');
+            optionsDiv.innerHTML = '';
+            
+            q.options.forEach((opt, index) => {
+                let btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index, q.ans, btn, optionsDiv);
+                optionsDiv.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIndex, correctIndex, selectedBtn, optionsContainer) {
+            const buttons = optionsContainer.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            const resumeBtn = document.getElementById('resumeBtn');
+            resumeBtn.classList.remove('hidden');
+
+            if (selectedIndex === correctIndex) {
+                selectedBtn.classList.add('correct');
+                score += 50; // Bonus
+                resumeBtn.innerText = "FIREWALL DEPLOYED - CONTINUE";
+                resumeBtn.className = "btn mt-6 mx-auto bg-emerald-500 hover:bg-emerald-400 block";
+                // Explode obstacle
+                createParticles(currentObstacleHit.x + 20, currentObstacleHit.y + 20, '#06b6d4', 20);
+                currentObstacleHit.markedForDeletion = true;
+                sfxCorrect(); // Play success chime
+            } else {
+                selectedBtn.classList.add('wrong');
+                buttons[correctIndex].classList.add('correct'); // Show right answer
+                resumeBtn.innerText = "BREACH ACCEPTED - LOSE 1 ❤️";
+                resumeBtn.className = "btn mt-6 mx-auto bg-rose-500 hover:bg-rose-400 block";
+                lives--;
+                currentObstacleHit.markedForDeletion = true;
+                sfxWrong(); // Play fail buzzer
+            }
+            updateHUD();
+        }
+
+        window.resumeGame = function() {
+            screens.quiz.classList.remove('active');
+            
+            if (lives <= 0) {
+                window.gameOver();
+            } else {
+                currentState = STATE.PLAYING;
+            }
+        }
+
+        function updateHUD() {
+            scoreDisplay.innerText = score;
+            livesDisplay.innerText = '❤️'.repeat(Math.max(0, lives));
+        }
+
+        window.startGame = function() {
+            initAudio(); // Initialize audio system when user interacts
+            
+            const nameInput = document.getElementById('playerName').value.trim();
+            let classInput = document.getElementById('playerClass').value.trim();
+            
+            if (!nameInput || !classInput) {
+                document.getElementById('nameError').classList.remove('hidden');
+                return;
+            }
+            
+            // Format class: Number + first 2 letters, no spaces, uppercase
+            // Example: "5 CARE" -> "5CA"
+            let formattedClass = classInput.replace(/\s+/g, ''); // Remove all spaces
+            
+            // Try to extract a leading number and the next two letters
+            const match = formattedClass.match(/^(\d+)([a-zA-Z]{1,2})/);
+            if (match) {
+                formattedClass = (match[1] + match[2]).toUpperCase();
+            } else {
+                 // Fallback if they didn't enter a number (just uppercase and take first 3 chars max to keep it short)
+                 formattedClass = formattedClass.substring(0, 3).toUpperCase();
+            }
+
+            playerName = nameInput;
+            playerClass = formattedClass;
+            document.getElementById('nameError').classList.add('hidden');
+
+            screens.start.classList.remove('active');
+            screens.end.classList.remove('active');
+            
+            score = 0;
+            lives = 3;
+            gameSpeed = 5;
+            frameCount = 0;
+            obstacles = [];
+            particles = [];
+            
+            player.y = canvas.height - 50 - player.height; // Set to ground
+            player.dy = 0;
+            
+            updateHUD();
+            currentState = STATE.PLAYING;
+        }
+
+        window.gameOver = async function() {
+            sfxGameOver(); // Play game over sound
+            currentState = STATE.GAMEOVER;
+            screens.end.classList.add('active');
+            
+            // Generate a random 5-digit Agent ID to display publicly
+            const agentId = "Agent " + Math.floor(10000 + Math.random() * 90000);
+            const publicDisplayName = `${agentId} (${playerClass})`;
+
+            if (currentUser && db) {
+                document.getElementById('endMessage').innerText = `You transmitted ${score} MB of data. Encrypting identity and saving to mainframe...`;
+                
+                // Public path for the leaderboard
+                const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', currentUser.uid);
+                // Secure path for Teacher Dashboard
+                const adminDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'admin_records', currentUser.uid);
+                
+                try {
+                    await setDoc(publicDocRef, {
+                        name: publicDisplayName,
+                        score: score,
+                        timestamp: Date.now()
+                    });
+                    
+                    await setDoc(adminDocRef, {
+                        realName: playerName,
+                        playerClass: playerClass,
+                        agentId: agentId,
+                        score: score,
+                        timestamp: Date.now()
+                    });
+                } catch (e) {
+                    console.error("Error saving score to Firebase:", e);
+                }
+            } else {
+                document.getElementById('endMessage').innerText = `You transmitted ${score} MB of data. (Offline Mode - Score not saved publicly)`;
+            }
+
+            // --- SEND TO GOOGLE APPS SCRIPT ---
+            // REPLACE THIS URL WITH YOUR ACTUAL WEB APP URL FROM STEP 1
+            const gasUrl = "https://script.google.com/macros/s/AKfycbz6qwpDKdg4kaeHr1spnvG8npTbfWKONycl_b46WGgKMoUksSEQz7ybaqh-QQ-TLR_l/exec"; 
+            
+            if (gasUrl !== "YOUR_GAS_WEB_APP_URL_HERE") {
+                try {
+                    fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors', // Important for avoiding CORS blocks from Sheets
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            realName: playerName,
+                            playerClass: playerClass,
+                            agentId: agentId,
+                            score: score
+                        })
+                    }).then(() => {
+                        console.log("Successfully beamed data to Google Sheets!");
+                    }).catch((error) => {
+                        console.error("Error sending to GAS:", error);
+                    });
+                } catch (error) {
+                    console.error("Fetch failed:", error);
+                }
+            }
+
+            setTimeout(() => {
+                showLeaderboard();
+            }, 3000);
+        }
+
+        function showLeaderboard() {
+            currentState = STATE.GAMEOVER;
+            screens.loading.classList.remove('active');
+            screens.start.classList.remove('active');
+            screens.end.classList.remove('active');
+            screens.leaderboard.classList.add('active');
+            
+            if (!db) return;
+
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            onSnapshot(q, (snapshot) => {
+                let scores = [];
+                snapshot.forEach(d => scores.push({ id: d.id, ...d.data() }));
+                scores.sort((a, b) => b.score - a.score);
+                
+                const topCount = 80;
+                let userRank = -1;
+                let userScoreObj = null;
+                
+                if (currentUser) {
+                    const userIndex = scores.findIndex(s => s.id === currentUser.uid);
+                    if (userIndex !== -1) {
+                        userRank = userIndex + 1;
+                        userScoreObj = scores[userIndex];
+                    }
+                }
+                
+                let displayScores = scores.slice(0, topCount).map((s, idx) => ({...s, rank: idx + 1}));
+                
+                if (userRank > topCount) {
+                    if (userRank > topCount + 1) {
+                        displayScores.push({ id: 'ellipsis', isEllipsis: true });
+                    }
+                    displayScores.push({...userScoreObj, rank: userRank});
+                }
+
+                renderLeaderboard(displayScores);
+            }, (error) => {
+                console.error("Leaderboard error", error);
+            });
+        }
+
+        function renderLeaderboard(scores) {
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            if(scores.length === 0) {
+                list.innerHTML = '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
+            }
+            scores.forEach((s) => {
+                const row = document.createElement('div');
+                
+                if (s.isEllipsis) {
+                    row.className = 'flex justify-center items-center p-1 mb-2 text-slate-500/50';
+                    row.innerHTML = `<span class="font-bold text-2xl tracking-[0.5em] leading-none mb-3">...</span>`;
+                } else {
+                    row.className = `flex justify-between items-center p-3 rounded mb-2 ${s.id === currentUser?.uid ? 'bg-cyan-900/70 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-slate-800 border border-slate-700'}`;
+                    row.innerHTML = `
+                        <span class="font-bold cyber-font text-slate-200">#${s.rank} ${s.name}</span>
+                        <span class="text-cyan-400 font-bold tracking-wider">${s.score} MB</span>
+                    `;
+                }
+                
+                list.appendChild(row);
+            });
+        }
+
+        let secretClicks = 0;
+        let clickTimer = null;
+
+        document.getElementById('mainTitle').addEventListener('click', () => {
+            secretClicks++;
+            
+            // Glow effect to give feedback on clicks
+            document.getElementById('mainTitle').style.textShadow = `0 0 ${secretClicks * 5}px rgba(16, 185, 129, 0.8)`;
+            
+            clearTimeout(clickTimer);
+            clickTimer = setTimeout(() => {
+                secretClicks = 0; // Reset if they stop clicking
+                document.getElementById('mainTitle').style.textShadow = 'none';
+            }, 1000);
+
+            if (secretClicks >= 5) {
+                secretClicks = 0;
+                document.getElementById('mainTitle').style.textShadow = 'none';
+                showTeacherDashboard();
+            }
+        });
+
+        function showTeacherDashboard() {
+            document.getElementById('teacherDashboard').classList.add('active');
+            const list = document.getElementById('teacherRecordsList');
+            list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 animate-pulse">Decrypting secure records...</td></tr>';
+            
+            if (!db) {
+                list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-rose-500">Database offline. Cannot fetch records.</td></tr>';
+                return;
+            }
+
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'admin_records');
+            onSnapshot(q, (snapshot) => {
+                let records = [];
+                snapshot.forEach(d => records.push({ id: d.id, ...d.data() }));
+                
+                // Sort by highest score
+                records.sort((a, b) => b.score - a.score);
+                
+                list.innerHTML = '';
+                if(records.length === 0) {
+                    list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-500">No student records found yet.</td></tr>';
+                    return;
+                }
+                
+                records.forEach(r => {
+                    let date = new Date(r.timestamp).toLocaleDateString() + ' ' + new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    let tr = document.createElement('tr');
+                    tr.className = "border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-white capitalize">${r.realName}</td>
+                        <td class="p-3 text-slate-300">${r.playerClass}</td>
+                        <td class="p-3 text-cyan-400 font-mono text-sm">${r.agentId}</td>
+                        <td class="p-3 text-emerald-400 font-bold">${r.score}</td>
+                        <td class="p-3 text-xs text-slate-500">${date}</td>
+                    `;
+                    list.appendChild(tr);
+                });
+            }, (error) => {
+                console.error("Admin fetch error", error);
+                list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-rose-500">Error loading secure records.</td></tr>';
+            });
+        }
+
+        async function initGameAuth() {
+            if (!auth) {
+                screens.loading.classList.remove('active');
+                screens.start.classList.add('active');
+                currentState = STATE.START;
+                return;
+            }
+
+            try {
+                if (authToken) {
+                    await signInWithCustomToken(auth, authToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch(e) {
+                console.error("Auth init failed:", e);
+                screens.loading.classList.remove('active');
+                screens.start.classList.add('active');
+                currentState = STATE.START;
+            }
+        }
+
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', user.uid);
+                    
+                    try {
+                        const snap = await getDoc(docRef);
+                        screens.loading.classList.remove('active');
+                        
+                        if (snap.exists()) {
+                            // Already played once
+                            playerName = snap.data().name;
+                            showLeaderboard();
+                        } else {
+                            // First time playing
+                            screens.start.classList.add('active');
+                            currentState = STATE.START;
+                        }
+                    } catch (e) {
+                        console.error("Failed to check status:", e);
+                        screens.loading.classList.remove('active');
+                        screens.start.classList.add('active');
+                        currentState = STATE.START;
+                    }
+                }
+            });
+            initGameAuth();
+        }
+
+        // Initialize background on load
+        drawBackground();
+        // Start the loop
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
