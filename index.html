@@ -8,7 +8,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
 
-        body {000
+        body {
             font-family: 'Inter', sans-serif;
             background-color: #020617; /* Slate 950 */
             color: #f8fafc;
@@ -31,9 +31,9 @@
             margin-top: 1rem;
             width: 100%;
             max-width: 900px;
-            height: 400px; /* Fixed logical height, width scales */
+            height: 400px;
             background: linear-gradient(to bottom, #0f172a 0%, #1e1b4b 100%);
-            border: 2px solid #06b6d4; /* Cyan 500 */
+            border: 2px solid #06b6d4;
             border-radius: 12px;
             box-shadow: 0 0 20px rgba(6, 182, 212, 0.4), inset 0 0 20px rgba(6, 182, 212, 0.2);
             overflow: hidden;
@@ -147,10 +147,19 @@
             #mobile-controls { display: block; }
         }
         
-        /* Leaderboard scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #06b6d4; border-radius: 4px; }
+        
+        /* Highlight animation for user's score */
+        @keyframes highlightPulse {
+            0% { box-shadow: 0 0 10px rgba(6, 182, 212, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.9); }
+            100% { box-shadow: 0 0 10px rgba(6, 182, 212, 0.5); }
+        }
+        .user-score-highlight {
+            animation: highlightPulse 2s infinite;
+        }
     </style>
 </head>
 <body>
@@ -195,7 +204,7 @@
                 <div class="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold cyber-font text-xl animate-pulse">
                     <span>⚠️</span> SECURITY ALERT DETECTED <span>⚠️</span>
                 </div>
-                <h3 id="quizQuestion" class="mb-6 text-lg">Question goes here?</h3>
+                <h3 id="quizQuestion" class="mb-6 text-lg text-white">Question goes here?</h3>
                 <div id="quizOptions" class="options-grid">
                     <!-- Populated by JS -->
                 </div>
@@ -207,17 +216,16 @@
         <div id="endScreen" class="overlay">
             <h2 id="endTitle" class="text-5xl cyber-font mb-4 text-rose-500">SYSTEM COMPROMISED</h2>
             <p id="endMessage" class="mb-6 text-xl text-slate-300"></p>
-            <!-- Reboot button removed to enforce one-time play -->
         </div>
 
         <!-- Leaderboard Screen -->
         <div id="leaderboardScreen" class="overlay">
             <div class="quiz-panel w-full max-w-md bg-slate-900/90 backdrop-blur-md">
-                <h2 class="text-3xl cyber-font text-cyan-400 mb-4 text-center tracking-wider">GLOBAL LEADERBOARD</h2>
+                <h2 class="text-3xl cyber-font text-cyan-400 mb-4 text-center tracking-wider">LEADERBOARD</h2>
                 <div id="leaderboardList" class="flex flex-col gap-2 mb-6 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                     <!-- Populated by JS -->
                 </div>
-                <p class="text-center text-slate-400 text-sm mt-4 italic">Agents are permitted one secure run only to maintain network integrity.</p>
+                <p class="text-center text-slate-400 text-sm mt-4 italic">Only ONE try per agent. Thank you for keeping the network safe.</p>
             </div>
         </div>
 
@@ -253,29 +261,19 @@
         Tap the game area to Jump / Double Jump
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script>
+        // Removed Firebase dependencies for standalone functionality.
+        // Leaderboard will use browser's localStorage for robust demonstration.
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = Object.keys(firebaseConfig).length > 0 ? initializeApp(firebaseConfig) : null;
-        const auth = app ? getAuth(app) : null;
-        const db = app ? getFirestore(app) : null;
-
-        let currentUser = null;
         let playerName = "";
         let playerClass = "";
+        let currentAgentId = null; // Track current session's ID
 
         // --- Web Audio API Setup ---
         let audioCtx = null;
 
         function initAudio() {
             if (!audioCtx) {
-                // Initialize context on first user interaction to comply with browser autoplay policies
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
             if (audioCtx.state === 'suspended') {
@@ -296,7 +294,6 @@
                     osc.frequency.exponentialRampToValueAtTime(slideToFreq, audioCtx.currentTime + duration);
                 }
                 
-                // Fast attack, exponential decay for a percussive 8-bit sound
                 gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
                 
@@ -354,12 +351,10 @@
 
         // Real-Time Class Input Formatter
         document.getElementById('playerClass').addEventListener('input', function(e) {
-            // Remove anything that isn't a letter or number
             let val = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            // Match up to 2 numbers at the start, followed by up to 2 letters
             const match = val.match(/^(\d{0,2})([A-Z]{0,2})/);
             if (match) {
-                this.value = match[0]; // Forces format directly in the text box
+                this.value = match[0];
             }
         });
 
@@ -371,11 +366,11 @@
         let lives = 3;
         let gameSpeed = 5;
         let frameCount = 0;
-        let currentObstacleHit = null; // Store which obstacle triggered the quiz
+        let currentObstacleHit = null;
 
         const player = {
             x: 100,
-            y: 0, // Set dynamically based on ground
+            y: 0,
             width: 40,
             height: 60,
             dy: 0,
@@ -386,12 +381,10 @@
             isGrounded: false,
             color: '#06b6d4',
             draw: function() {
-                // Determine which image to use based on grounded state and frame count
                 let currentImg;
                 if (!this.isGrounded) {
                     currentImg = playerImgJump;
                 } else {
-                    // Alternate images every 8 frames to create a running animation
                     if (Math.floor(frameCount / 8) % 2 === 0) {
                         currentImg = playerImgRun1;
                     } else {
@@ -399,24 +392,20 @@
                     }
                 }
 
-                // Draw the custom character image
                 if (currentImg.complete && currentImg.naturalHeight !== 0) {
                     ctx.imageSmoothingEnabled = false;
                     ctx.drawImage(currentImg, this.x, this.y, this.width, this.height);
                     ctx.imageSmoothingEnabled = true; 
                 } else {
-                    // Fallback block if image is still loading or URL is invalid
                     ctx.fillStyle = this.color;
                     ctx.fillRect(this.x, this.y, this.width, this.height);
                 }
                 
-                // Thruster glow when jumping
                 if (!this.isGrounded) {
                     ctx.shadowBlur = 15;
                     ctx.shadowColor = '#06b6d4';
                     ctx.fillStyle = '#67e8f9';
                     ctx.beginPath();
-                    // Draw dual thruster flames matching the SVG exhaust ports
                     ctx.arc(this.x + this.width * 0.17, this.y + this.height + 2, 4, 0, Math.PI*2);
                     ctx.arc(this.x + this.width * 0.83, this.y + this.height + 2, 4, 0, Math.PI*2);
                     ctx.fill();
@@ -443,7 +432,7 @@
                     this.jumps++;
                     this.isGrounded = false;
                     createParticles(this.x + this.width/2, this.y + this.height, '#06b6d4', 5);
-                    sfxJump(); // Play jump sound
+                    sfxJump();
                 }
             }
         };
@@ -480,12 +469,7 @@
                 ctx.font = '36px Inter';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                // Draw text/emoji slightly larger and centered on hit box
                 ctx.fillText(this.data.emoji, this.x + this.width/2, this.y + this.height/2 + 4);
-                
-                // Debug Hitbox
-                // ctx.strokeStyle = this.isCollectible ? 'green' : 'red';
-                // ctx.strokeRect(this.x, this.y, this.width, this.height);
             }
         }
 
@@ -515,90 +499,22 @@
         }
 
         const quizQuestions = [
-            {
-                q: "You just bumped into a Malware Bug! What is the BEST way to keep malware off your device?",
-                options: ["Only download apps/games from official stores.", "Click on pop-ups that say you won a prize.", "Turn off your antivirus so games run faster."],
-                ans: 0
-            },
-            {
-                q: "A Phishing Hook tried to catch you! How can you spot a phishing message?",
-                options: ["It has your correct name.", "It creates a sense of urgency, asking for passwords.", "It is from a teacher about homework."],
-                ans: 1
-            },
-            {
-                q: "A Scam Link blocked your path! It promises 'Free Robux if you click here'. What do you do?",
-                options: ["Click it quickly before it disappears.", "Share it with a friend to see if it works.", "Ignore it and never click links promising free stuff."],
-                ans: 2
-            },
-            {
-                q: "Security Alert! Someone in a game chat asks for your real name and where you go to school. What should you do?",
-                options: ["Tell them, it's just a game.", "Give them a fake name and school.", "Don't tell them, block them, and tell an adult."],
-                ans: 2
-            },
-            {
-                q: "You hit a bad file! Why is it important to use Strong Passwords?",
-                options: ["They are easier for you to remember.", "They make it much harder for hackers to guess and steal your account.", "They make your computer run faster."],
-                ans: 1
-            },
-            {
-                q: "Warning! You are about to connect to Free Public Wi-Fi at a cafe. What is the risk?",
-                options: ["Hackers might be able to peek at the data you send over the network.", "It uses up your phone's battery too fast.", "The cafe might charge you money later."],
-                ans: 0
-            },
-            {
-                q: "You have been playing your favorite video game for two hours straight. What is a healthy habit to practice?",
-                options: ["Keep playing until you finish the next level, no matter how long it takes.", "Take a 10-15 minute break to stretch, drink water, and rest your eyes.", "Switch to watching videos on your phone instead to give your brain a break from gaming."],
-                ans: 1
-            },
-            {
-                q: "Someone is sending mean messages to you in the game chat. What is the first thing you should do?",
-                options: ["Use the block or mute button, and report them to the game platform.", "Reply with mean messages to show them you are tough.", "Quit playing games forever."],
-                ans: 0
-            },
-            {
-                q: "An online friend asks you to share a secret about your personal life. What should you do?",
-                options: ["Share the secret, but make them promise not to tell anyone else.", "Keep your personal life private and do not share secrets with strangers.", "Tell them the secret only if they share a secret with you first."],
-                ans: 1
-            },
-            {
-                q: "How can you make sure gaming does not stop you from doing your homework and chores?",
-                options: ["Set a schedule to finish your responsibilities before gaming.", "Play games while you are doing your homework to save time.", "Only do your homework when your parents force you to, even if it delays gaming."],
-                ans: 0
-            },
-            {
-                q: "What is considered Personally Identifiable Information (PII) that you should NEVER share online?",
-                options: ["Your favorite color and favorite food.", "Your home address and phone number.", "Your gaming username."],
-                ans: 1
-            },
-            {
-                q: "Which of the following is an example of a strong, secure password?",
-                options: ["Password123", "Yourname123", "B@sketb@ll!99"],
-                ans: 2
-            },
-            {
-                q: "Someone you just met in an online game asks for a picture of you. What should you do?",
-                options: ["Send a picture, but only if it does not show your face.", "Send a picture if they promise not to share it with anyone else.", "Politely say no and tell them you are not allowed to share photos online."],
-                ans: 2
-            },
-            {
-                q: "You are setting up a new online learning account. The site asks for your school's name and your home address. What should you enter?",
-                options: ["Do not enter either; instead, ask a parent for help before sharing personal details.", "Enter both so new friends from school can find you easily.", "Enter only your school name but not your home address."],
-                ans: 0
-            }
+            { q: "You just bumped into a Malware Bug! What is the BEST way to keep malware off your device?", options: ["Only download apps/games from official stores.", "Click on pop-ups that say you won a prize.", "Turn off your antivirus so games run faster."], ans: 0 },
+            { q: "A Phishing Hook tried to catch you! How can you spot a phishing message?", options: ["It has your correct name.", "It creates a sense of urgency, asking for passwords.", "It is from a teacher about homework."], ans: 1 },
+            { q: "A Scam Link blocked your path! It promises 'Free Robux if you click here'. What do you do?", options: ["Click it quickly before it disappears.", "Share it with a friend to see if it works.", "Ignore it and never click links promising free stuff."], ans: 2 },
+            { q: "Security Alert! Someone in a game chat asks for your real name and where you go to school. What should you do?", options: ["Tell them, it's just a game.", "Give them a fake name and school.", "Don't tell them, block them, and tell an adult."], ans: 2 },
+            { q: "You hit a bad file! Why is it important to use Strong Passwords?", options: ["They are easier for you to remember.", "They make it much harder for hackers to guess and steal your account.", "They make your computer run faster."], ans: 1 }
         ];
-        let availableQuestions = [...quizQuestions]; // Clone array for shuffling/tracking
+        let availableQuestions = [...quizQuestions];
 
         function handleInput(e) {
-            // Ignore the spacebar if the user is currently typing in an input box
             if (e.target.tagName === 'INPUT') return;
-
             if (e.type === 'keydown' && e.code !== 'Space') return;
-            if (e.type === 'keydown') e.preventDefault(); // Prevent scrolling
+            if (e.type === 'keydown') e.preventDefault(); 
 
             if (currentState === STATE.PLAYING) {
                 player.jump();
             }
-            // Removed starting with spacebar to enforce typing a name and clicking the button
         }
 
         window.addEventListener('keydown', handleInput);
@@ -613,18 +529,13 @@
 
         function spawnEntities() {
             if (frameCount % Math.max(60, 120 - Math.floor(gameSpeed * 5)) === 0) {
-                // Determine what to spawn
                 const groundY = canvas.height - 50;
-                
                 if (Math.random() < 0.7) {
-                    // Spawn Obstacle
                     const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
                     const y = groundY - type.height + type.yOffset;
                     obstacles.push(new Entity(canvas.width, y, type.width, type.height, type, false));
                 } else {
-                    // Spawn Collectible
                     const type = COLLECTIBLE_TYPES[Math.floor(Math.random() * COLLECTIBLE_TYPES.length)];
-                    // Random height for collectible
                     const y = groundY - 40 - Math.random() * 100;
                     obstacles.push(new Entity(canvas.width, y, 40, 40, type, true));
                 }
@@ -632,91 +543,71 @@
         }
 
         function checkCollisions() {
-            // Very simple AABB Collision, slightly forgiving hitbox
-            const pHitbox = {
-                x: player.x + 5, y: player.y + 5, w: player.width - 10, h: player.height - 10
-            };
+            const pHitbox = { x: player.x + 5, y: player.y + 5, w: player.width - 10, h: player.height - 10 };
 
             for (let i = 0; i < obstacles.length; i++) {
                 let obs = obstacles[i];
                 let oHitbox = { x: obs.x + 5, y: obs.y + 5, w: obs.width - 10, h: obs.height - 10 };
 
-                if (pHitbox.x < oHitbox.x + oHitbox.w &&
-                    pHitbox.x + pHitbox.w > oHitbox.x &&
-                    pHitbox.y < oHitbox.y + oHitbox.h &&
-                    pHitbox.y + pHitbox.h > oHitbox.y) {
+                if (pHitbox.x < oHitbox.x + oHitbox.w && pHitbox.x + pHitbox.w > oHitbox.x &&
+                    pHitbox.y < oHitbox.y + oHitbox.h && pHitbox.y + pHitbox.h > oHitbox.y) {
                     
                     if (obs.isCollectible) {
-                        // Collectible Hit
                         score += obs.data.points;
                         createParticles(obs.x + obs.width/2, obs.y + obs.height/2, '#10b981', 10);
                         obs.markedForDeletion = true;
                         updateHUD();
-                        sfxCollect(); // Play collect sound
+                        sfxCollect();
                     } else {
-                        // Obstacle Hit -> Trigger Quiz
                         currentObstacleHit = obs;
-                        sfxHit(); // Play crash sound
+                        sfxHit(); 
                         triggerQuiz(obs.data);
-                        return; // Stop checking further collisions this frame
+                        return; 
                     }
                 }
             }
         }
 
         function drawBackground() {
-            // Deep cyberspace background
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Moving Grid floor
             const groundY = canvas.height - 50;
-            
-            // Grid lines
-            ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)'; // Cyan
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
             ctx.lineWidth = 2;
             
-            // Horizontal line
             ctx.beginPath();
             ctx.moveTo(0, groundY);
             ctx.lineTo(canvas.width, groundY);
             ctx.stroke();
 
-            // Vertical moving lines
             const lineSpacing = 50;
             const offset = (frameCount * gameSpeed) % lineSpacing;
             
             for (let i = -lineSpacing; i < canvas.width + lineSpacing; i += lineSpacing) {
                 ctx.beginPath();
-                // Perspective math for cool 3D effect on floor
                 let startX = i - offset;
-                let endX = startX + ((startX - canvas.width/2) * 1.5); // Spread outward
+                let endX = startX + ((startX - canvas.width/2) * 1.5); 
                 
                 ctx.moveTo(startX, groundY);
                 ctx.lineTo(endX, canvas.height);
                 ctx.stroke();
             }
             
-            // Fill bottom to hide lines below a certain point if needed, or leave it for speed effect
             ctx.fillStyle = 'rgba(2, 6, 23, 0.6)';
             ctx.fillRect(0, groundY, canvas.width, 50);
         }
 
         function update() {
             if (currentState !== STATE.PLAYING) return;
-
             player.update();
             spawnEntities();
 
-            // Update obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 obstacles[i].update();
-                if (obstacles[i].markedForDeletion) {
-                    obstacles.splice(i, 1);
-                }
+                if (obstacles[i].markedForDeletion) obstacles.splice(i, 1);
             }
 
-            // Update particles
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
                 if (particles[i].life <= 0) particles.splice(i, 1);
@@ -724,21 +615,18 @@
 
             checkCollisions();
 
-            // Increase score over time and increase speed slowly
             if (frameCount % 10 === 0) {
                 score++;
                 updateHUD();
             }
-            if (frameCount % 600 === 0) { // Every ~10 seconds
+            if (frameCount % 600 === 0) { 
                 gameSpeed += 0.5;
             }
-
             frameCount++;
         }
 
         function draw() {
             drawBackground();
-
             if (currentState === STATE.PLAYING || currentState === STATE.QUIZ) {
                 obstacles.forEach(obs => obs.draw());
                 player.draw();
@@ -757,18 +645,14 @@
             screens.quiz.classList.add('active');
             document.getElementById('resumeBtn').classList.add('hidden');
             
-            // Get random question
             if (availableQuestions.length === 0) {
-                availableQuestions = [...quizQuestions]; // Reset if all used
+                availableQuestions = [...quizQuestions]; 
             }
             const qIndex = Math.floor(Math.random() * availableQuestions.length);
             const q = availableQuestions[qIndex];
-            
-            // Remove question from available pool to avoid immediate repeats
             availableQuestions.splice(qIndex, 1);
 
             document.getElementById('quizQuestion').innerText = q.q;
-            
             const optionsDiv = document.getElementById('quizOptions');
             optionsDiv.innerHTML = '';
             
@@ -790,28 +674,26 @@
 
             if (selectedIndex === correctIndex) {
                 selectedBtn.classList.add('correct');
-                score += 50; // Bonus
+                score += 50; 
                 resumeBtn.innerText = "FIREWALL DEPLOYED - CONTINUE";
                 resumeBtn.className = "btn mt-6 mx-auto bg-emerald-500 hover:bg-emerald-400 block";
-                // Explode obstacle
                 createParticles(currentObstacleHit.x + 20, currentObstacleHit.y + 20, '#06b6d4', 20);
                 currentObstacleHit.markedForDeletion = true;
-                sfxCorrect(); // Play success chime
+                sfxCorrect(); 
             } else {
                 selectedBtn.classList.add('wrong');
-                buttons[correctIndex].classList.add('correct'); // Show right answer
+                buttons[correctIndex].classList.add('correct'); 
                 resumeBtn.innerText = "BREACH ACCEPTED - LOSE 1 ❤️";
                 resumeBtn.className = "btn mt-6 mx-auto bg-rose-500 hover:bg-rose-400 block";
                 lives--;
                 currentObstacleHit.markedForDeletion = true;
-                sfxWrong(); // Play fail buzzer
+                sfxWrong(); 
             }
             updateHUD();
         }
 
         window.resumeGame = function() {
             screens.quiz.classList.remove('active');
-            
             if (lives <= 0) {
                 window.gameOver();
             } else {
@@ -825,11 +707,7 @@
         }
 
         window.startGame = function() {
-            try {
-                initAudio(); // Initialize audio system when user interacts
-            } catch (e) {
-                console.warn("Audio initialization bypassed:", e);
-            }
+            try { initAudio(); } catch (e) {}
             
             const nameInput = document.getElementById('playerName').value.trim();
             let classInput = document.getElementById('playerClass').value.trim();
@@ -839,17 +717,12 @@
                 return;
             }
             
-            // Format class: Number + first 2 letters, no spaces, uppercase
-            // Example: "5 CARE" -> "5CA"
-            let formattedClass = classInput.replace(/\s+/g, ''); // Remove all spaces
-            
-            // Try to extract a leading number and the next two letters
+            let formattedClass = classInput.replace(/\s+/g, '');
             const match = formattedClass.match(/^(\d+)([a-zA-Z]{1,2})/);
             if (match) {
                 formattedClass = (match[1] + match[2]).toUpperCase();
             } else {
-                 // Fallback if they didn't enter a number (just uppercase and take first 3 chars max to keep it short)
-                 formattedClass = formattedClass.substring(0, 3).toUpperCase();
+                formattedClass = formattedClass.substring(0, 3).toUpperCase();
             }
 
             playerName = nameInput;
@@ -866,81 +739,77 @@
             obstacles = [];
             particles = [];
             
-            player.y = canvas.height - 50 - player.height; // Set to ground
+            player.y = canvas.height - 50 - player.height; 
             player.dy = 0;
             
             updateHUD();
             currentState = STATE.PLAYING;
         }
 
-        window.gameOver = async function() {
-            sfxGameOver(); // Play game over sound
+        // Simulates a global database utilizing browser's Local Storage
+        function getLocalLeaderboard() {
+            let lb = localStorage.getItem('dataDashLeaderboard');
+            if (!lb) {
+                // Seed with dummy data for immediate visual context
+                lb = [
+                    { realName: 'Sarah', playerClass: '5B', agentId: 'Agent 49201', score: 1250, timestamp: Date.now() - 100000 },
+                    { realName: 'Mike', playerClass: '5A', agentId: 'Agent 10293', score: 950, timestamp: Date.now() - 200000 },
+                    { realName: 'Anna', playerClass: '6C', agentId: 'Agent 99302', score: 700, timestamp: Date.now() - 300000 }
+                ];
+                localStorage.setItem('dataDashLeaderboard', JSON.stringify(lb));
+            } else {
+                lb = JSON.parse(lb);
+            }
+            // Always return sorted descending
+            return lb.sort((a, b) => b.score - a.score);
+        }
+
+        function saveToLocalLeaderboard(entry) {
+            let lb = getLocalLeaderboard();
+            lb.push(entry);
+            lb.sort((a, b) => b.score - a.score);
+            localStorage.setItem('dataDashLeaderboard', JSON.stringify(lb));
+        }
+
+        window.gameOver = function() {
+            sfxGameOver(); 
             currentState = STATE.GAMEOVER;
             screens.end.classList.add('active');
             
-            // Generate a random 5-digit Agent ID to display publicly
-            const agentId = "Agent " + Math.floor(10000 + Math.random() * 90000);
-            const publicDisplayName = `${agentId} (${playerClass})`;
+            currentAgentId = "Agent " + Math.floor(10000 + Math.random() * 90000);
+            
+            document.getElementById('endMessage').innerText = `You transmitted ${score} MB of data. Encrypting identity and saving to mainframe...`;
+            
+            const newRecord = {
+                realName: playerName,
+                playerClass: playerClass,
+                agentId: currentAgentId,
+                score: score,
+                timestamp: Date.now()
+            };
 
-            if (currentUser && db) {
-                document.getElementById('endMessage').innerText = `You transmitted ${score} MB of data. Encrypting identity and saving to mainframe...`;
-                
-                // Public path for the leaderboard
-                const publicDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', currentUser.uid);
-                // Secure path for Teacher Dashboard
-                const adminDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'admin_records', currentUser.uid);
-                
-                try {
-                    await setDoc(publicDocRef, {
-                        name: publicDisplayName,
-                        score: score,
-                        timestamp: Date.now()
-                    });
-                    
-                    await setDoc(adminDocRef, {
-                        realName: playerName,
-                        playerClass: playerClass,
-                        agentId: agentId,
-                        score: score,
-                        timestamp: Date.now()
-                    });
-                } catch (e) {
-                    console.error("Error saving score to Firebase:", e);
-                }
-            } else {
-                document.getElementById('endMessage').innerText = `You transmitted ${score} MB of data. (Offline Mode - Score not saved publicly)`;
-            }
-
-            // Save to local storage to prevent multiple plays on this device
+            // Save locally as a backup for the Teacher Dashboard
+            saveToLocalLeaderboard(newRecord);
             localStorage.setItem('dataDashPlayed', 'true');
             localStorage.setItem('dataDashScore', score);
+            localStorage.setItem('dataDashCurrentAgent', currentAgentId);
 
-            // --- SEND TO GOOGLE APPS SCRIPT ---
-            // REPLACE THIS URL WITH YOUR ACTUAL WEB APP URL FROM STEP 1
-            const gasUrl = "https://script.google.com/macros/s/AKfycbz6qwpDKdg4kaeHr1spnvG8npTbfWKONycl_b46WGgKMoUksSEQz7ybaqh-QQ-TLR_l/exec"; 
-            
-            if (gasUrl !== "YOUR_GAS_WEB_APP_URL_HERE") {
-                try {
-                    fetch(gasUrl, {
-                        method: 'POST',
-                        mode: 'no-cors', // Important for avoiding CORS blocks from Sheets
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            realName: playerName,
-                            playerClass: playerClass,
-                            agentId: agentId,
-                            score: score
-                        })
-                    }).then(() => {
-                        console.log("Successfully beamed data to Google Sheets!");
-                    }).catch((error) => {
-                        console.error("Error sending to GAS:", error);
-                    });
-                } catch (error) {
-                    console.error("Fetch failed:", error);
-                }
+            // Send data to Google Apps Script
+            const gasUrl = "https://script.google.com/macros/s/AKfycbwgzias437iRiUzPuQjOuqnH8uwopm4lqg4MkGSfVuYuYJe6KkWbnG2_FN1knr_HWUC/exec";
+            try {
+                // Send as a simple POST request. 
+                // We don't await the response to avoid blocking the UI, 
+                // and 'no-cors' is used because we don't need to read the response from the POST.
+                fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'text/plain', // Use text/plain for simple requests
+                    },
+                    body: JSON.stringify(newRecord)
+                }).catch(e => console.error("Error sending score:", e));
+            } catch(e) {
+                console.error("Failed to transmit to central database", e);
             }
 
             setTimeout(() => {
@@ -955,91 +824,67 @@
             screens.end.classList.remove('active');
             screens.leaderboard.classList.add('active');
             
-            const gasUrl = "https://script.google.com/macros/s/AKfycbz6qwpDKdg4kaeHr1spnvG8npTbfWKONycl_b46WGgKMoUksSEQz7ybaqh-QQ-TLR_l/exec"; 
-
-            if (!db) {
-                // Fetch from Google Apps Script for GitHub Pages
-                const list = document.getElementById('leaderboardList');
-                list.innerHTML = '<div class="text-center p-6 text-cyan-400 animate-pulse font-bold tracking-widest">FETCHING LIVE LEADERBOARD...</div>';
-                
-                fetch(gasUrl)
-                    .then(response => response.json())
-                    .then(data => {
-                        let displayScores = data.map((s, idx) => ({...s, rank: idx + 1}));
-                        renderLeaderboard(displayScores, isRevisit);
-                    })
-                    .catch(error => {
-                        console.error("Leaderboard error", error);
-                        renderLeaderboard([], isRevisit);
-                    });
-                return;
-            }
-
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
-            onSnapshot(q, (snapshot) => {
-                let scores = [];
-                snapshot.forEach(d => scores.push({ id: d.id, ...d.data() }));
-                scores.sort((a, b) => b.score - a.score);
-                
-                const topCount = 80;
-                let userRank = -1;
-                let userScoreObj = null;
-                
-                if (currentUser) {
-                    const userIndex = scores.findIndex(s => s.id === currentUser.uid);
-                    if (userIndex !== -1) {
-                        userRank = userIndex + 1;
-                        userScoreObj = scores[userIndex];
-                    }
-                }
-                
-                let displayScores = scores.slice(0, topCount).map((s, idx) => ({...s, rank: idx + 1}));
-                
-                if (userRank > topCount) {
-                    if (userRank > topCount + 1) {
-                        displayScores.push({ id: 'ellipsis', isEllipsis: true });
-                    }
-                    displayScores.push({...userScoreObj, rank: userRank});
-                }
-
-                renderLeaderboard(displayScores);
-            }, (error) => {
-                console.error("Leaderboard error", error);
-            });
-        }
-
-        function renderLeaderboard(scores, isRevisit = false) {
             const list = document.getElementById('leaderboardList');
-            list.innerHTML = '';
+            let bannerHTML = '';
 
             if (isRevisit) {
                 const pastScore = localStorage.getItem('dataDashScore') || 0;
-                list.innerHTML = `
+                bannerHTML = `
                     <div class="text-center p-4 mb-4 bg-rose-900/40 border border-rose-500 rounded-lg shrink-0">
                         <p class="text-rose-400 font-bold mb-1 text-sm md:text-base tracking-widest">ACCESS DENIED</p>
-                        <p class="text-slate-300 text-sm">Security protocols mandate one run per agent. Your secure transmission: <span class="text-cyan-400 font-bold text-lg">${pastScore} MB</span></p>
+                        <p class="text-slate-300 text-sm">Top Secret Rule: Agents only get one try! Your secure transmission: <span class="text-cyan-400 font-bold text-lg">${pastScore} MB</span></p>
                     </div>`;
+                currentAgentId = localStorage.getItem('dataDashCurrentAgent');
             }
 
-            if(scores.length === 0) {
-                list.innerHTML += '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
-            }
-            scores.forEach((s) => {
-                const row = document.createElement('div');
-                
-                if (s.isEllipsis) {
-                    row.className = 'flex justify-center items-center p-1 mb-2 text-slate-500/50';
-                    row.innerHTML = `<span class="font-bold text-2xl tracking-[0.5em] leading-none mb-3">...</span>`;
-                } else {
-                    row.className = `flex justify-between items-center p-3 rounded mb-2 ${s.id === currentUser?.uid ? 'bg-cyan-900/70 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-slate-800 border border-slate-700'}`;
-                    row.innerHTML = `
-                        <span class="font-bold cyber-font text-slate-200">#${s.rank} ${s.name}</span>
-                        <span class="text-cyan-400 font-bold tracking-wider">${s.score} MB</span>
-                    `;
-                }
-                
-                list.appendChild(row);
-            });
+            // Show loading state while fetching from GAS
+            list.innerHTML = bannerHTML + '<div id="fetchingState" class="text-center text-cyan-400 p-4 animate-pulse font-bold tracking-widest">FETCHING SECURE DATA...</div>';
+
+            const gasUrl = "https://script.google.com/macros/s/AKfycbwgzias437iRiUzPuQjOuqnH8uwopm4lqg4MkGSfVuYuYJe6KkWbnG2_FN1knr_HWUC/exec";
+
+            // Make a standard GET request to fetch the JSON array
+            fetch(gasUrl)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    const fetchState = document.getElementById('fetchingState');
+                    if (fetchState) fetchState.remove();
+
+                    if(!data || data.length === 0) {
+                        list.innerHTML += '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
+                        return;
+                    }
+
+                    // Render top scores from Google Sheets
+                    data.forEach((s, idx) => {
+                        const row = document.createElement('div');
+                        // Use s.name as that is what your GAS doGet script returns
+                        const isCurrentPlayer = (s.name === currentAgentId && s.score == score) || (isRevisit && s.name === currentAgentId);
+                        
+                        row.className = `flex justify-between items-center p-3 rounded mb-2 ${isCurrentPlayer ? 'bg-cyan-900/70 border border-cyan-400 user-score-highlight' : 'bg-slate-800 border border-slate-700'}`;
+                        row.innerHTML = `
+                            <span class="font-bold cyber-font text-slate-200">#${idx + 1} ${s.name}</span>
+                            <span class="text-cyan-400 font-bold tracking-wider">${s.score} MB</span>
+                        `;
+                        list.appendChild(row);
+                    });
+                })
+                .catch(err => {
+                    console.error("Leaderboard fetch error:", err);
+                    const fetchState = document.getElementById('fetchingState');
+                    if (fetchState) fetchState.remove();
+                    // Keep the fallback message so you know if it failed
+                    list.innerHTML += `
+                        <div class="text-center text-rose-500 p-4 flex flex-col items-center gap-2">
+                            <span class="text-2xl">⚠️</span>
+                            <span>Connection to secure server failed.</span>
+                            <span class="text-xs text-slate-400">${err.message}</span>
+                        </div>`;
+                });
         }
 
         let secretClicks = 0;
@@ -1047,13 +892,11 @@
 
         document.getElementById('mainTitle').addEventListener('click', () => {
             secretClicks++;
-            
-            // Glow effect to give feedback on clicks
             document.getElementById('mainTitle').style.textShadow = `0 0 ${secretClicks * 5}px rgba(16, 185, 129, 0.8)`;
             
             clearTimeout(clickTimer);
             clickTimer = setTimeout(() => {
-                secretClicks = 0; // Reset if they stop clicking
+                secretClicks = 0; 
                 document.getElementById('mainTitle').style.textShadow = 'none';
             }, 1000);
 
@@ -1067,114 +910,43 @@
         function showTeacherDashboard() {
             document.getElementById('teacherDashboard').classList.add('active');
             const list = document.getElementById('teacherRecordsList');
-            list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-400 animate-pulse">Decrypting secure records...</td></tr>';
+            let records = getLocalLeaderboard();
             
-            if (!db) {
-                list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-rose-500">Database offline. Cannot fetch records.</td></tr>';
+            list.innerHTML = '';
+            if(records.length === 0) {
+                list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-500">No student records found yet.</td></tr>';
                 return;
             }
-
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'admin_records');
-            onSnapshot(q, (snapshot) => {
-                let records = [];
-                snapshot.forEach(d => records.push({ id: d.id, ...d.data() }));
-                
-                // Sort by highest score
-                records.sort((a, b) => b.score - a.score);
-                
-                list.innerHTML = '';
-                if(records.length === 0) {
-                    list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-slate-500">No student records found yet.</td></tr>';
-                    return;
-                }
-                
-                records.forEach(r => {
-                    let date = new Date(r.timestamp).toLocaleDateString() + ' ' + new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    let tr = document.createElement('tr');
-                    tr.className = "border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors";
-                    tr.innerHTML = `
-                        <td class="p-3 font-bold text-white capitalize">${r.realName}</td>
-                        <td class="p-3 text-slate-300">${r.playerClass}</td>
-                        <td class="p-3 text-cyan-400 font-mono text-sm">${r.agentId}</td>
-                        <td class="p-3 text-emerald-400 font-bold">${r.score}</td>
-                        <td class="p-3 text-xs text-slate-500">${date}</td>
-                    `;
-                    list.appendChild(tr);
-                });
-            }, (error) => {
-                console.error("Admin fetch error", error);
-                list.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-rose-500">Error loading secure records.</td></tr>';
+            
+            records.forEach(r => {
+                let date = new Date(r.timestamp).toLocaleDateString() + ' ' + new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                let tr = document.createElement('tr');
+                tr.className = "border-b border-slate-700/50 hover:bg-slate-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white capitalize">${r.realName}</td>
+                    <td class="p-3 text-slate-300">${r.playerClass}</td>
+                    <td class="p-3 text-cyan-400 font-mono text-sm">${r.agentId}</td>
+                    <td class="p-3 text-emerald-400 font-bold">${r.score}</td>
+                    <td class="p-3 text-xs text-slate-500">${date}</td>
+                `;
+                list.appendChild(tr);
             });
         }
 
-        async function initGameAuth() {
-            if (!auth) {
+        // Initialization
+        window.onload = function() {
+            setTimeout(() => {
                 screens.loading.classList.remove('active');
-                screens.start.classList.add('active');
-                currentState = STATE.START;
-                return;
-            }
-
-            try {
-                if (authToken) {
-                    await signInWithCustomToken(auth, authToken);
+                if (localStorage.getItem('dataDashPlayed') === 'true') {
+                    showLeaderboard(true); 
                 } else {
-                    await signInAnonymously(auth);
+                    screens.start.classList.add('active');
+                    currentState = STATE.START;
                 }
-            } catch(e) {
-                console.error("Auth init failed:", e);
-                screens.loading.classList.remove('active');
-                screens.start.classList.add('active');
-                currentState = STATE.START;
-            }
+                drawBackground();
+                requestAnimationFrame(gameLoop);
+            }, 1000);
         }
-
-        if (auth) {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    currentUser = user;
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', user.uid);
-                    
-                    try {
-                        const snap = await getDoc(docRef);
-                        screens.loading.classList.remove('active');
-                        
-                        if (snap.exists()) {
-                            // Already played once
-                            playerName = snap.data().name;
-                            showLeaderboard();
-                        } else {
-                            // First time playing
-                            screens.start.classList.add('active');
-                            currentState = STATE.START;
-                        }
-                    } catch (e) {
-                        console.error("Failed to check status:", e);
-                        screens.loading.classList.remove('active');
-                        screens.start.classList.add('active');
-                        currentState = STATE.START;
-                    }
-                }
-            });
-            initGameAuth();
-        } else {
-            // GitHub Pages / No Firebase Flow
-            screens.loading.classList.remove('active');
-            
-            // Check if the student has already played on this device
-            if (localStorage.getItem('dataDashPlayed') === 'true') {
-                showLeaderboard(true); // Pass true to show the 'Access Denied' banner above the board
-            } else {
-                screens.start.classList.add('active');
-                currentState = STATE.START;
-            }
-        }
-
-        // Initialize background on load
-        drawBackground();
-        // Start the loop
-        requestAnimationFrame(gameLoop);
-
     </script>
 </body>
 </html>
