@@ -948,22 +948,30 @@
             }, 3000);
         }
 
-        function showLeaderboard() {
+        function showLeaderboard(isRevisit = false) {
             currentState = STATE.GAMEOVER;
             screens.loading.classList.remove('active');
             screens.start.classList.remove('active');
             screens.end.classList.remove('active');
             screens.leaderboard.classList.add('active');
             
+            const gasUrl = "https://script.google.com/macros/s/AKfycbz6qwpDKdg4kaeHr1spnvG8npTbfWKONycl_b46WGgKMoUksSEQz7ybaqh-QQ-TLR_l/exec"; 
+
             if (!db) {
-                // If there's no Firebase (e.g. on GitHub Pages), show a fallback message
+                // Fetch from Google Apps Script for GitHub Pages
                 const list = document.getElementById('leaderboardList');
-                list.innerHTML = `
-                    <div class="text-center p-6 bg-slate-800 border border-slate-700 rounded-lg">
-                        <p class="text-slate-300 mb-4 font-bold">TRANSMISSION COMPLETE</p>
-                        <p class="text-cyan-400 font-bold text-2xl tracking-wider mb-4">Your Score: ${score} MB</p>
-                        <p class="text-sm mt-4 text-emerald-400 animate-pulse">✓ Data securely beamed to Teacher Dashboard!</p>
-                    </div>`;
+                list.innerHTML = '<div class="text-center p-6 text-cyan-400 animate-pulse font-bold tracking-widest">FETCHING LIVE LEADERBOARD...</div>';
+                
+                fetch(gasUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        let displayScores = data.map((s, idx) => ({...s, rank: idx + 1}));
+                        renderLeaderboard(displayScores, isRevisit);
+                    })
+                    .catch(error => {
+                        console.error("Leaderboard error", error);
+                        renderLeaderboard([], isRevisit);
+                    });
                 return;
             }
 
@@ -1000,11 +1008,21 @@
             });
         }
 
-        function renderLeaderboard(scores) {
+        function renderLeaderboard(scores, isRevisit = false) {
             const list = document.getElementById('leaderboardList');
             list.innerHTML = '';
+
+            if (isRevisit) {
+                const pastScore = localStorage.getItem('dataDashScore') || 0;
+                list.innerHTML = `
+                    <div class="text-center p-4 mb-4 bg-rose-900/40 border border-rose-500 rounded-lg shrink-0">
+                        <p class="text-rose-400 font-bold mb-1 text-sm md:text-base tracking-widest">ACCESS DENIED</p>
+                        <p class="text-slate-300 text-sm">Security protocols mandate one run per agent. Your secure transmission: <span class="text-cyan-400 font-bold text-lg">${pastScore} MB</span></p>
+                    </div>`;
+            }
+
             if(scores.length === 0) {
-                list.innerHTML = '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
+                list.innerHTML += '<div class="text-center text-slate-400 p-4">No entries yet. Be the first!</div>';
             }
             scores.forEach((s) => {
                 const row = document.createElement('div');
@@ -1145,17 +1163,7 @@
             
             // Check if the student has already played on this device
             if (localStorage.getItem('dataDashPlayed') === 'true') {
-                const pastScore = localStorage.getItem('dataDashScore') || 0;
-                screens.leaderboard.classList.add('active');
-                currentState = STATE.GAMEOVER;
-                
-                const list = document.getElementById('leaderboardList');
-                list.innerHTML = `
-                    <div class="text-center p-6 bg-slate-800 border border-slate-700 rounded-lg">
-                        <p class="text-rose-500 mb-2 font-bold text-2xl tracking-widest uppercase">ACCESS DENIED</p>
-                        <p class="text-slate-300 mb-6">Security protocols mandate one run per agent. Your previous transmission is securely locked.</p>
-                        <p class="text-cyan-400 font-bold text-3xl tracking-wider mb-4">${pastScore} MB</p>
-                    </div>`;
+                showLeaderboard(true); // Pass true to show the 'Access Denied' banner above the board
             } else {
                 screens.start.classList.add('active');
                 currentState = STATE.START;
