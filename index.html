@@ -772,7 +772,7 @@
             // Start the countdown timer
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
-                if (currentState === STATE.PLAYING) {
+                if (currentState === STATE.PLAYING || currentState === STATE.QUIZ) {
                     timeRemaining--;
                     updateTimerDisplay();
                     if (timeRemaining <= 0) {
@@ -786,10 +786,25 @@
             currentState = STATE.PLAYING;
         }
 
+        // Helper functions to manage the local Teacher Dashboard data
+        function getLocalLeaderboard() {
+            const data = localStorage.getItem('dataDashLocalLeaderboard');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveToLocalLeaderboard(record) {
+            let records = getLocalLeaderboard();
+            records.push(record);
+            // Keep records sorted by score highest to lowest
+            records.sort((a, b) => b.score - a.score);
+            localStorage.setItem('dataDashLocalLeaderboard', JSON.stringify(records));
+        }
+
         window.gameOver = function(reason) {
             sfxGameOver(); 
             currentState = STATE.GAMEOVER;
             screens.end.classList.add('active');
+            screens.quiz.classList.remove('active'); // Close quiz screen if time runs out while answering
             
             if (timerInterval) clearInterval(timerInterval);
             
